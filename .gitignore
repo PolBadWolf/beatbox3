@@ -4,6 +4,8 @@
 # Idea
 .idea/
 *.iml
+src/main/java/META-INF/*
+src/main/java/META-INF
 
 # Log file
 *.log

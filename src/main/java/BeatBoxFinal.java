@@ -26,9 +26,11 @@ public class BeatBoxFinal {
     Sequence mySequence = null;
     Track track;
 
-    String[] instrumentNames = { "Bass Drum", "Closed Hi-Hat", "Open Hi-Hat",
-            "Acoustic Snare", "Crash Cymbal", "Hand Clap", "High Tom", "Hi Bongo",
-            "High Agogo", "Open Hi Conga"
+    String[] instrumentNames = {
+            "Bass Drum", "Closed Hi-Hat", "Open Hi-Hat", "Acoustic Snare",
+            "Crash Cymbal", "Hand Clap", "High Tom", "Hi Bongo",
+            "Maracas", "Whistle", "Low Conga", "Cowbell",
+            "Vibraslap", "Low-mid Tom", "High Agogo", "Open Hi Conga"
     };
 
     int[] instruments = {
@@ -43,7 +45,7 @@ public class BeatBoxFinal {
         userName = name;
         //
         try {
-            Socket sock = new Socket("127.0.0.1", 4242);
+            Socket sock = new Socket("10.0.20.242", 4242);
             out = new ObjectOutputStream(sock.getOutputStream());
             in = new ObjectInputStream(sock.getInputStream());
             Thread remote = new Thread(new RemoteReader());
@@ -83,7 +85,7 @@ public class BeatBoxFinal {
         sendIt.addActionListener(new MySendListener());
         buttonBox.add(sendIt);
 
-        JTextField userMessage = new JTextField();
+        userMessage = new JTextField();
         buttonBox.add(userMessage);
 
         //--
@@ -212,26 +214,77 @@ public class BeatBoxFinal {
 
     public class MyListSelectionListener implements ListSelectionListener {
         @Override
-        public void valueChanged(ListSelectionEvent e) {
-
+        public void valueChanged(ListSelectionEvent le) {
+            if (!le.getValueIsAdjusting()) {
+                String selected = (String) incomingList.getSelectedValue();
+                if (selected != null) {
+                    boolean[] selectedState = (boolean[]) otherSeqsMap.get(selected);
+                    changeSequence(selectedState);
+                    sequencer.stop();
+                    buildTrackAndStart();
+                }
+            }
         }
     }
+
     public class RemoteReader implements Runnable {
+        boolean[] checkboxState = null;
+        String nameToShow = null;
+        Object obj = null;
+
         @Override
         public void run() {
-
+            try {
+                while ((obj = in.readObject()) != null) {
+                    System.out.println("got an object from server");
+                    System.out.println(obj.getClass());
+                    String nameToShow = (String) obj;
+                    checkboxState = (boolean[]) in.readObject();
+                    otherSeqsMap.put(nameToShow, checkboxState);
+                    listVector.add(nameToShow);
+                    incomingList.setListData(listVector);
+                }
+            } catch (Exception ex) {ex.printStackTrace();}
         }
     }
+
     public class MyPlayMineListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-
+            if (mySequence != null) {
+                sequence = mySequence;
+            }
         }
     }
-    public void changeSequence(boolean[] checkboxState) {}
-    public void makeTracks(ArrayList list) {}
+
+    public void changeSequence(boolean[] checkboxState) {
+        for (int i=0; i<256; i++) {
+            JCheckBox check = (JCheckBox) checkBoxList.get(i);
+            if (checkboxState[i]) {
+                check.setSelected(true);
+            } else {
+                check.setSelected(false);
+            }
+        }
+    }
+    public void makeTracks(ArrayList list) {
+        Iterator it = list.iterator();
+        for (int i=0; i<16; i++) {
+            Integer num = (Integer) it.next();
+            if (num != null) {
+                int numKey = num.intValue();
+                track.add(makeEvent(144, 9, numKey, 100, i));
+                track.add(makeEvent(128, 9, numKey, 100, i + 1));
+            }
+        }
+    }
     public MidiEvent makeEvent(int comd, int chan, int one, int two, int tick) {
         MidiEvent event = null;
+        try {
+            ShortMessage a = new ShortMessage();
+            a.setMessage(comd, chan, one, two);
+            event = new MidiEvent(a, tick);
+        } catch (Exception e) {}
         return event;
     }
 }
